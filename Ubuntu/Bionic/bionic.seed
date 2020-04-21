@@ -30,13 +30,13 @@ d-i mirror/http/proxy string
 ### Then d-i passwd/root-password-crypted password <hash from mkpasswd command>
 ### Or for user d-i passwd/user-password-crypted password <hash from mkpasswd command>
 
-d-i passwd/root-password password 0cptester
-d-i passwd/root-password-again password 0cptester
+d-i passwd/root-password password <YOUR_PASSWORD>
+d-i passwd/root-password-again password <YOUR_PASSWORD>
 
 d-i passwd/user-fullname string Admin User
 d-i passwd/username string pxadmin
-d-i passwd/user-password password 0cptester
-d-i passwd/user-password-again password 0cptester
+d-i passwd/user-password password <YOUR_PASSWORD>
+d-i passwd/user-password-again password <YOUR_PASSWORD>
 d-i passwd/user-default-groups string audio cdrom video sudo
 
 ## Timezone Setup
@@ -252,10 +252,10 @@ d-i partman/early_command string \
 # Note: This "kills" the "dummy" logical volume and associated /tmp/hold mount - leaving plenty of free space in the vg 
 # to allocate as desired - ex: to grow other volumes etc...
 
-d-i preseed/late_command string umount /target/tmp/hold && sed -i '/vg0-tmp+hold/d' /target/etc/fstab && lvremove --autobackup n -f /dev/mapper/vg0-tmp+hold  && \
-in-target modprobe ipmi_si && \
-in-target modprobe ipmi_devintf && \
-in-target ipmitool raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00 && \
+#d-i preseed/late_command string umount /target/tmp/hold && sed -i '/vg0-tmp+hold/d' /target/etc/fstab && lvremove --autobackup n -f /dev/mapper/vg0-tmp+hold  && \
+#in-target modprobe ipmi_si && \
+#in-target modprobe ipmi_devintf && \
+#in-target ipmitool raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00 && \
 #echo "deb http://download.proxmox.com/debian/pve stretch pve-no-subscription" >> /target/etc/apt/sources.list.d/pve-install-repo.list && \
 #wget http://download.proxmox.com/debian/proxmox-ve-release-5.x.gpg -O /target/etc/apt/trusted.gpg.d/proxmox-ve-release-5.x.gpg && \
 in-target apt remove -y os-prober
