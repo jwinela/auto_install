@@ -1,0 +1,263 @@
+## Localization Settings
+d-i debian-installer/locale string en_US
+d-i debian-installer/keymap select us 
+d-i keymap select us
+d-i keyboard-configuration/xkb-keymap select us
+
+## Network Configuration 
+### This area can be made fancier with early_command scripts.. for now keeping it simple
+d-i netcfg/choose_interface select auto
+
+d-i netcfg/get_hostname string unassigned-hostname
+d-i netcfg/get_domain string unassigned-domain
+
+# Needed to skip an annoying pointless interactive prompt?
+
+d-i netcfg/wireless_wep string
+d-i hw-detect/load_firmware boolean true
+
+## Mirror Setup 
+d-i mirror/country string manual
+d-i mirror/http/hostname string mirrors.namecheap.com
+#d-i mirror/http/hostname string http.us.debian.org
+d-i mirror/http/directory string /debian
+d-i mirror/suite string stretch
+d-i mirror/http/proxy string
+
+## Account Setup
+### To include encrypted passwords do the following
+### mkpasswd -m sha-512
+### Then d-i passwd/root-password-crypted password <hash from mkpasswd command>
+### Or for user d-i passwd/user-password-crypted password <hash from mkpasswd command>
+
+d-i passwd/root-password password 0cptester
+d-i passwd/root-password-again password 0cptester
+
+d-i passwd/user-fullname string Admin User
+d-i passwd/username string pxadmin
+d-i passwd/user-password password 0cptester
+d-i passwd/user-password-again password 0cptester
+d-i passwd/user-default-groups string audio cdrom video sudo
+
+## Timezone Setup
+
+d-i clock-setup/utc boolean true
+d-i time/zone string US/Pacific
+d-i clock-setup/ntp boolean true
+d-i clock-setup/ntp-server string pool.ntp.org
+
+## LVM setup
+
+d-i partman-auto/method string lvm
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-lvm/device_remove_lvm_span boolean true
+d-i partman-auto/purge_lvm_from_device boolean true
+d-i partman-md/device_remove_md boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+d-i partman-auto-lvm/new_vg_name string vg0
+
+d-i partman-efi/non_efi_system boolean true
+d-i partman-basicfilesystems/choose_label string gpt
+d-i partman-basicfilesystems/default_label string gpt
+d-i partman-partitioning/choose_label string gpt
+d-i partman-partitioning/default_label string gpt
+d-i partman/choose_label string gpt
+d-i partman/default_label string gpt
+d-i partman/alignment string "optimal"
+
+
+# Creates a recipe inline - note the name - small-swap
+d-i partman-auto/choose_recipe select small-swap
+
+# Now make the "small-swap" recipe
+
+# Per NIST 800-53 SC-32
+# The following directories should be mounted on its own partition at mininum
+# /tmp /var /var/log/audit /home
+
+# I prefer to put a few others into their own volume also...
+## Note: if using btrfs, just use quotas and everything in one big volume with no lvm...
+
+# Sizes: 
+# /boot/efi 550MB
+# /boot 1GB
+# / - 8GB
+# /var 4GB
+# /var/log 1GB
+# /var/log/audit 1GB
+# /var/mail/spool 1GB
+# /var/mail 1GB
+# /tmp 1GB
+# /home 16GB
+# /tmp/hold All remaning space - 60GB Note: this is deleted during the late_command to leave unallocated \
+# space for growth / volume sizing adjustments.  
+
+
+d-i partman-auto/expert_recipe string \
+small-swap :: \
+550 10 550 free \
+$iflabel{ gpt } \
+$reusemethod{ } \
+method{ efi } \
+format{ } \
+. \
+1024 9 1024 ext2 \
+$defaultignore{ } \
+method{ format } format{ } \
+use_filesystem{ } filesystem{ ext2 } \
+label{ boot } \
+mountpoint{ /boot } \
+. \
+8192 8 8192 ext4 \
+$lvmok{ } \
+lvm_name { root } \
+method{ format } format{ } \
+use_filesystem{ } filesystem{ ext4 } \
+label{ root } \
+mountpoint{ / } \
+. \
+4096 7 4096 ext4 \
+$lvmok{ } \
+lvm_name { var } \
+method{ format } format{ } \
+use_filesystem{ } filesystem{ ext4 } \
+label{ var } \
+mountpoint{ /var } \
+. \
+2048 6 2048 ext4 \
+$lvmok{ } \
+lvm_name { log } \
+method{ format } format{ } \
+use_filesystem{ } filesystem{ ext4 } \
+label{ var-log } \
+mountpoint{ /var/log } \
+.\
+1024 5 1024 ext4 \
+$lvmok{ } \
+lvm_name { audit } \
+method{ format } format{ } \
+use_filesystem{ } filesystem{ ext4 } \
+label{ var-log-audit } \
+mountpoint{ /var/log/audit } \
+.\
+1024 4 1024 ext4 \
+$lvmok{ } \
+lvm_name { tmp } \
+method{ format } format{ } \
+use_filesystem{ } filesystem{ ext4 } \
+label{ tmp } \
+mountpoint{ /tmp } \
+.\
+16384 12 16384 linux-swap \
+$lvmok{ } \
+lvm_name { swap } \
+method{ swap } format{ } \
+.\
+8192 11 8192 ext4 \
+$lvmok{ } \
+lvm_name { home } \
+method{ format } format{ } \
+use_filesystem{ } filesystem{ ext4 } \
+label{ home } \
+mountpoint{ /home } \
+.\
+1024 13 -1 ext4 \
+$lvmok{ } \
+lvm_name { hold } \
+method{ format } format{ } \
+use_filesystem{ } filesystem{ ext4 } \
+mountpoint{ /tmp/hold } \
+.\
+
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman-md/confirm boolean true
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+
+d-i grub-installer/only_debian boolean true
+d-i grub-installer/with_other_os boolean true
+
+d-i partman/alignment string "optimal"
+
+d-i partman/mount_style select uuid
+
+d-i apt-setup/non-free boolean true
+d-i apt-setup/contrib boolean true
+
+### Package selection
+tasksel tasksel/first multiselect standard
+
+# Individual additional packages to install
+d-i pkgsel/include string sudo openssh-server rsync vim ipmitool bridge-utils net-tools tcpdump
+d-i pkgsel/upgrade select none 
+d-i pkgsel/install-language-support boolean false
+
+# disable automatic package updates
+d-i pkgsel/update-policy select none
+d-i pkgsel/upgrade select full-upgrade
+
+# disable the popularity contest feedback
+popularity-contest popularity-contest/participate boolean false
+
+d-i grub-installer/only_debian boolean true
+d-i grub-installer/with_other_os boolean true
+
+# Use the following option to add additional boot parameters for the
+# installed system (if supported by the bootloader installer).
+# Note: options passed to the installer will be added automatically.
+d-i debian-installer/add-kernel-opts string console=ttyS1,57600n8
+
+# Avoid that last message about the install being complete.
+d-i finish-install/reboot_in_progress note
+
+# This is how to make the installer shutdown when finished
+d-i debian-installer/exit/poweroff boolean true
+
+#To debug - especially if adding applications / etc. causes failure of installation  then uncomment these commands:
+#   debconf-get-selections --installer > file
+#   debconf-get-selections >> file
+
+# Fun installer tricks may be done with early_command, partman/early_command and late_command 
+ 
+# di preseed/early_command - commands here are run as early as possible, just after
+# preseeding is read. Remember all on one line.
+
+# Generic example
+# d-i preseed/early_command string anna-install some-udeb
+
+# d-i partman/early_command - This command is run immediately before the partitioner starts. It may be
+# useful to apply dynamic partitioner preseeding that depends on the state
+# of the disks (which may not be visible when preseed/early_command runs).
+
+# Note this "filters" on the pci id denoted to insure that installation happens to the
+# desired device - /dev/sda is not a persistent mapping - so this finds the device by path
+# for virtual machine testing only:
+#  For vm testing use pci-0000:00:04.0
+#  For leopard / ocp hosts use pci-0000:00:1f.2-ata-5
+
+d-i partman/early_command string \
+    BOOT_DRIVE=$(for i in /sys/block/*; do devpath=$(udevadm info $i | grep ID_PATH= | cut -f 2 -d "=") && \
+    if [[ "$devpath" == "pci-0000:00:1f.2-ata-5" ]]; then echo ${i} | cut -f 4 -d "/"; fi; done) && \
+    debconf-set partman-auto/disk /dev/${BOOT_DRIVE}; \
+    debconf-set grub-installer/bootdev /dev/${BOOT_DRIVE}
+
+
+# d-i preseed/late_command - This command is run just before the install finishes, but when there is
+# still a usable /target directory. You can chroot to /target and use it
+# directly, or use the apt-install and in-target commands to easily install
+# packages and run commands in the target system.
+#
+# Note: This "kills" the "dummy" logical volume and associated /tmp/hold mount - leaving plenty of free space in the vg 
+# to allocate as desired - ex: to grow other volumes etc...
+
+d-i preseed/late_command string umount /target/tmp/hold && sed -i '/vg0-tmp+hold/d' /target/etc/fstab && lvremove --autobackup n -f /dev/mapper/vg0-tmp+hold  && \
+in-target modprobe ipmi_si && \
+in-target modprobe ipmi_devintf && \
+in-target ipmitool raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00 && \
+echo "deb http://download.proxmox.com/debian/pve stretch pve-no-subscription" >> /target/etc/apt/sources.list.d/pve-install-repo.list && \
+wget http://download.proxmox.com/debian/proxmox-ve-release-5.x.gpg -O /target/etc/apt/trusted.gpg.d/proxmox-ve-release-5.x.gpg && \
+in-target apt remove -y os-prober
+ 
+
