@@ -8,7 +8,7 @@ d-i keyboard-configuration/xkb-keymap select us
 ### This area can be made fancier with early_command scripts.. for now keeping it simple
 d-i netcfg/choose_interface select auto
 
-d-i netcfg/get_hostname string unassigned-hostname
+#d-i netcfg/get_hostname string unassigned-hostname
 d-i netcfg/get_domain string unassigned-domain
 
 # Needed to skip an annoying pointless interactive prompt?
@@ -18,11 +18,11 @@ d-i hw-detect/load_firmware boolean true
 
 ## Mirror Setup 
 d-i mirror/country string manual
-d-i mirror/http/hostname string mirrors.namecheap.com
+d-i mirror/http/hostname string ftp.us.debian.org
 #d-i mirror/http/hostname string http.us.debian.org
 d-i mirror/http/directory string /debian
 d-i mirror/suite string stretch
-d-i mirror/http/proxy string
+d-i mirror/http/proxy string http://192.168.250.1:3142
 
 ## Account Setup
 ### To include encrypted passwords do the following
@@ -177,7 +177,7 @@ d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
 
 d-i grub-installer/only_debian boolean true
-d-i grub-installer/with_other_os boolean true
+d-i grub-installer/with_other_os boolean false
 
 d-i partman/alignment string "optimal"
 
@@ -190,7 +190,7 @@ d-i apt-setup/contrib boolean true
 tasksel tasksel/first multiselect standard
 
 # Individual additional packages to install
-d-i pkgsel/include string sudo openssh-server rsync vim ipmitool bridge-utils net-tools tcpdump
+d-i pkgsel/include string sudo openssh-server rsync vim ipmitool bridge-utils net-tools tcpdump curl ethtool dnsutils
 d-i pkgsel/upgrade select none 
 d-i pkgsel/install-language-support boolean false
 
@@ -215,22 +215,6 @@ d-i finish-install/reboot_in_progress note
 # This is how to make the installer shutdown when finished
 d-i debian-installer/exit/poweroff boolean true
 
-#To debug - especially if adding applications / etc. causes failure of installation  then uncomment these commands:
-#   debconf-get-selections --installer > file
-#   debconf-get-selections >> file
-
-# Fun installer tricks may be done with early_command, partman/early_command and late_command 
- 
-# di preseed/early_command - commands here are run as early as possible, just after
-# preseeding is read. Remember all on one line.
-
-# Generic example
-# d-i preseed/early_command string anna-install some-udeb
-
-# d-i partman/early_command - This command is run immediately before the partitioner starts. It may be
-# useful to apply dynamic partitioner preseeding that depends on the state
-# of the disks (which may not be visible when preseed/early_command runs).
-
 # Note this "filters" on the pci id denoted to insure that installation happens to the
 # desired device - /dev/sda is not a persistent mapping - so this finds the device by path
 # for virtual machine testing only:
@@ -241,8 +225,10 @@ d-i partman/early_command string \
     BOOT_DRIVE=$(for i in /sys/block/*; do devpath=$(udevadm info $i | grep ID_PATH= | cut -f 2 -d "=") && \
     if [[ "$devpath" == "pci-0000:00:1f.2-ata-5" ]]; then echo ${i} | cut -f 4 -d "/"; fi; done) && \
     debconf-set partman-auto/disk /dev/${BOOT_DRIVE}; \
-    debconf-set grub-installer/bootdev /dev/${BOOT_DRIVE}
-
+    debconf-set grub-installer/bootdev /dev/${BOOT_DRIVE} ; \
+    grep -q dm /proc/swaps && for i in $(grep dm /proc/swaps | cut -f 1 -d " "); do swapoff $i; done || true ; \
+    for t in $(vgs --noheadings  | cut -f 3 -d " "); do  vgremove -f "$t" ; done || true;
+    for t in  $(pvs --noheadings | cut -f 3 -d " "); do pvremove -f "$t" ; done || true 
 
 # d-i preseed/late_command - This command is run just before the install finishes, but when there is
 # still a usable /target directory. You can chroot to /target and use it
@@ -251,13 +237,37 @@ d-i partman/early_command string \
 #
 # Note: This "kills" the "dummy" logical volume and associated /tmp/hold mount - leaving plenty of free space in the vg 
 # to allocate as desired - ex: to grow other volumes etc...
+#in-target /bin/sh -c 'echo pxadmin ALL=NOPASSWD: ALL > /etc/sudoers.d/pxadmin' & \
+#in-target /bin/sh -c 'chmod 440 /etc/sudoers.d/pxadmin' & \
+#in-target /bin/sh -c 'mkdir /home/pxadmin/.ssh' && \
+#in-target /bin/sh -c 'chown pxadmin:pxadmin /home/pxadmin/.ssh' & \
+#in-target /bin/sh -c 'curl http://192.168.250.1/id_rsa.pub >> /target/home/pxadmin/.ssh/authorized_keys' && \
+#in-target /bin/sh -c 'chown pxadmin:pxadmin /home/pxadmin/.ssh/authorized_keys' & \
+#in-target /bin/sh -c 'modprobe ipmi_si' & \
+#in-target /bin/sh -c 'modprobe ipmi_devintf' & \
+#in-target /bin/sh -c 'ipmitool raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00' & \
 
-d-i preseed/late_command string umount /target/tmp/hold && sed -i '/vg0-tmp+hold/d' /target/etc/fstab && lvremove --autobackup n -f /dev/mapper/vg0-tmp+hold  && \
-in-target modprobe ipmi_si && \
-in-target modprobe ipmi_devintf && \
-in-target ipmitool raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00 && \
-echo "deb http://download.proxmox.com/debian/pve stretch pve-no-subscription" >> /target/etc/apt/sources.list.d/pve-install-repo.list && \
-wget http://download.proxmox.com/debian/proxmox-ve-release-5.x.gpg -O /target/etc/apt/trusted.gpg.d/proxmox-ve-release-5.x.gpg && \
-in-target apt remove -y os-prober
- 
+d-i preseed/late_command string \
+umount /target/tmp/hold && sed -i '/vg0-tmp+hold/d' /target/etc/fstab && lvremove --autobackup n -f /dev/mapper/vg0-tmp+hold;  \
+echo "echo 'pxadmin ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/pxadmin; \
+chmod 0440 /target/etc/sudoers.d/pxadmin; \
+mkdir -m 700 /home/pxadmin/.ssh; \
+/usr/bin/curl http://192.168.250.1/id_rsa.pub >> /home/pxadmin/.ssh/authorized_keys; \
+chown -R pxadmin:pxadmin /home/pxadmin/.ssh; \
+ip_addr=\$(/bin/ip route | awk '!/default/{ print \$NF }'); \
+long_name=\$(/usr/bin/nslookup \${ip_addr} | awk '/name/{ print substr(\$NF, 1, length(\$NF)-1)}'); \
+short_name=\$(echo \${long_name} | cut -f 1 -d \".\"); \
+sed -i \"s/127.0.1.1\\tdebian/\${ip_addr}\\t\${short_name}\\t\${long_name}/g\" /etc/hosts & hostname \${long_name}; \
+echo \${long_name} > /etc/hostname;" | chroot /target /bin/bash;
+
+#modprobe ipmi_si & modprobe ipmi_devintf & \
+#ipmitool raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00 & \
+#MB_sn=$(dmidecode -t baseboard | grep "Serial Number:" | cut -f 3 -d " ") & \
+#ip_addr=$(ifconfig | awk '/192.168/{ print $2 }') & \
+#sed -i "s/127.0.1.1\tdebian/${ip_addr}\t${MB_sn}/g" /etc/hosts & hostname $MB_sn > /etc/hostname & \
+#echo "deb http://download.proxmox.com/debian/pve stretch pve-no-subscription" >> /target/etc/apt/sources.list.d/pve-install-repo.list && \
+#wget http://download.proxmox.com/debian/proxmox-ve-release-5.x.gpg -O /target/etc/apt/trusted.gpg.d/proxmox-ve-release-5.x.gpg && \
+#apt remove -y os-prober & \
+#apt-get update && apt -y dist-upgrade & \
+#apt install -y proxmox-ve postfix open-iscsi
 
