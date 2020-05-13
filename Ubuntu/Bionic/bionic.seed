@@ -190,7 +190,7 @@ d-i apt-setup/contrib boolean true
 tasksel tasksel/first multiselect standard
 
 # Individual additional packages to install
-d-i pkgsel/include string sudo openssh-server rsync vim ipmitool bridge-utils net-tools tcpdump
+d-i pkgsel/include string sudo openssh-server rsync vim ipmitool bridge-utils net-tools tcpdump curl ethtool
 d-i pkgsel/upgrade select none 
 d-i pkgsel/install-language-support boolean false
 
