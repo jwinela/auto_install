@@ -1,52 +1,58 @@
 ## Localization Settings
-d-i debian-installer/locale string en_US
-d-i debian-installer/keymap select us 
-d-i keymap select us
-d-i keyboard-configuration/xkb-keymap select us
+#d-i debian-installer/locale string en_US
+d-i debian-installer/locale string {{ short_lang }}_{{ 'short_country'|upper }}
+#d-i debian-installer/keymap select us 
+d-i debian-installer/keymap select {{ short_country }} 
+#d-i keymap select us
+d-i keymap select {{ short_country }}
+#d-i keyboard-configuration/xkb-keymap select us
+d-i keyboard-configuration/xkb-keymap select {{ short_country }}
 
 ## Network Configuration 
-### This area can be made fancier with early_command scripts.. for now keeping it simple
-d-i netcfg/choose_interface select auto
-
-d-i netcfg/get_hostname string unassigned-hostname
-d-i netcfg/get_domain string unassigned-domain
-
-# Needed to skip an annoying pointless interactive prompt?
-
+#d-i netcfg/choose_interface select auto
+d-i netcfg/choose_interface select {{ net_mode  }}
+#d-i netcfg/get_hostname string unassigned-hostname
+#d-i netcfg/get_domain string unassigned-domain
+d-i netcfg/get_domain string {{ domain_name }}
 d-i netcfg/wireless_wep string
 d-i hw-detect/load_firmware boolean true
 
 ## Mirror Setup 
 d-i mirror/country string manual
-d-i mirror/http/hostname string mirrors.namecheap.com
-#d-i mirror/http/hostname string http.us.debian.org
-d-i mirror/http/directory string /ubuntu
-d-i mirror/suite string bionic
-d-i mirror/http/proxy string
+#d-i mirror/http/hostname string mirrors.namecheap.com
+d-i mirror/http/hostname string {{ mirror }}
+#d-i mirror/http/directory string /ubuntu
+d-i mirror/http/directory string /{{ distribution }}
+#d-i mirror/suite string bionic
+d-i mirror/suite string {{ distribution_codename }}
+d-i mirror/http/proxy string {{ apt_proxy }}:{{ proxy_port }}
 
 ## Account Setup
-### To include encrypted passwords do the following
-### mkpasswd -m sha-512
-### Then d-i passwd/root-password-crypted password <hash from mkpasswd command>
-### Or for user d-i passwd/user-password-crypted password <hash from mkpasswd command>
-
-d-i passwd/root-password password 0cptester
-d-i passwd/root-password-again password 0cptester
-
-d-i passwd/user-fullname string Admin User
-d-i passwd/username string pxadmin
-d-i passwd/user-password password 0cptester
-d-i passwd/user-password-again password 0cptester
-d-i passwd/user-default-groups string audio cdrom video sudo
+#d-i passwd/user-password-crypted password {{ root_password_hash }}
+#d-i passwd/root-password password 0cptester
+d-i passwd/root-password password {{ root_password_clear }}
+d-i passwd/root-password-again password {{ root_password_clear }}
+#d-i passwd/user-fullname string Admin User
+d-i passwd/user-fullname string {{ 'user_fullname' }}
+#d-i passwd/username string pxadmin
+d-i passwd/username string {{ username }}
+#d-i passwd/user-password password 0cptester
+d-i passwd/user-password password {{ user_password }}
+d-i passwd/user-password-again password {{ user_password }}
+#d-i passwd/user-default-groups string audio cdrom video sudo
+d-i passwd/user-default-groups string audio {{ user_groups }}
 
 ## Timezone Setup
 
 d-i clock-setup/utc boolean true
-d-i time/zone string US/Pacific
+#d-i time/zone string US/Pacific
+d-i time/zone string {{ 'short_country'|upper }}/{{ timezone_name }}
 d-i clock-setup/ntp boolean true
-d-i clock-setup/ntp-server string pool.ntp.org
+#d-i clock-setup/ntp-server string pool.ntp.org
+d-i clock-setup/ntp-server string {{ ntp_servers }}
 
 ## LVM setup
+#Skipping refactor of partitioning here - likely move this to an include file anyway...
 
 d-i partman-auto/method string lvm
 d-i partman-lvm/device_remove_lvm boolean true
@@ -183,21 +189,17 @@ d-i partman/alignment string "optimal"
 
 d-i partman/mount_style select uuid
 
+### Package selection details
 d-i apt-setup/non-free boolean true
 d-i apt-setup/contrib boolean true
 
-### Package selection
 tasksel tasksel/first multiselect standard
-
-# Individual additional packages to install
 d-i pkgsel/include string sudo openssh-server rsync vim ipmitool bridge-utils net-tools tcpdump curl ethtool
 d-i pkgsel/upgrade select none 
 d-i pkgsel/install-language-support boolean false
-
 # disable automatic package updates
 d-i pkgsel/update-policy select none
 d-i pkgsel/upgrade select full-upgrade
-
 # disable the popularity contest feedback
 popularity-contest popularity-contest/participate boolean false
 
@@ -223,13 +225,6 @@ d-i debian-installer/exit/poweroff boolean true
  
 # di preseed/early_command - commands here are run as early as possible, just after
 # preseeding is read. Remember all on one line.
-
-# Generic example
-# d-i preseed/early_command string anna-install some-udeb
-
-# d-i partman/early_command - This command is run immediately before the partitioner starts. It may be
-# useful to apply dynamic partitioner preseeding that depends on the state
-# of the disks (which may not be visible when preseed/early_command runs).
 
 # Note this "filters" on the pci id denoted to insure that installation happens to the
 # desired device - /dev/sda is not a persistent mapping - so this finds the device by path
