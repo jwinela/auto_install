@@ -1,5 +1,7 @@
+---
+# Preseed Variables
 short_lang: en
-short_country: us  # need to confirm that Jinja2 transforms work with ansible - ex varval|upper
+short_country: us  #Need to confirm that Jinja2 transforms work with ansible - ex varval|upper
 
 net_mode: auto
 
@@ -11,20 +13,33 @@ mirror: mirrors.namecheap.com
 distribution: ubuntu
 distribution_codename: bionic
 
-apt_proxy:   # blank default - consider {{ http_path }}:{{ proxy_port }}
-proxy_port: 3142  # Default port for apt-cacher-ng - not required if not caching
-root_password_hash:   # mkpasswd hash - consider making this "in-play" - mkpasswd -m sha-512
+apt_proxy:   #Blank default - consider {{ http_path }}:{{ proxy_port }}
+proxy_port: 3142  #Default port for apt-cacher-ng - not required if not caching
+root_password_hash:   #Command: mkpasswd hash - consider making this "in-play" - mkpasswd -m sha-512
 root_password_clear: 0cptester
 
-user_fullname:  # note - does 'var' allow spaces in ansible jinja2?
+user_fullname:  #Question - does 'var' allow spaces in ansible jinja2?
 
 username: pxadmin
 user_password: 0cptester
 user_groups: 'audio cdrom video sudo'  # again, check spaces - maybe better as an iterated list....
 
+# Maybe better? - But requires a "join" - is there any reason to break these out?
+#user_groups:
+#   - audio
+#   - cdrom
+#   - video
+#   - sudo
+
 timezone_name: Pacific
 
-ntp_servers: pool.ntp.org  # Consider an iterated list here also - maybe an include
+ntp_servers: pool.ntp.org  #Consider an iterated list here also - maybe an include
+
+# NTP As a list?
+#ntp_servers:
+#   - 0.north-america.pool.ntp.org
+#   - 1.north-america.pool.ntp.org
+#   - 2.north-america.pool.ntp.org
 
 # Lots of work to do on the partitioning / partman recipe - skipping this for now. 
 # this should be "external" to the preseed - called in as an included recipee and logic

@@ -10,11 +10,11 @@ d-i keyboard-configuration/xkb-keymap select {{ short_country }}
 
 ## Network Configuration 
 #d-i netcfg/choose_interface select auto
-d-i netcfg/choose_interface select {{ net_mode  }}
+d-i netcfg/choose_interface select {{ net_mode | default('auto') }}
 #d-i netcfg/get_hostname string unassigned-hostname
 #d-i netcfg/get_domain string unassigned-domain
-d-i netcfg/get_domain string {{ domain_name }}
-d-i netcfg/wireless_wep string
+d-i netcfg/get_domain string {{ domain_name | default('unassigned-hostname') }}
+d-i netcfg/wireless_wep string {{ wireless_key | default() }}
 d-i hw-detect/load_firmware boolean true
 
 ## Mirror Setup 
