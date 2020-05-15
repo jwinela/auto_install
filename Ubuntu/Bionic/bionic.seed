@@ -249,6 +249,6 @@ echo "echo 'pxadmin ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/pxadmin; \
 chmod 0440 /target/etc/sudoers.d/pxadmin; \
 mkdir -m 700 /home/pxadmin/.ssh; \
 /usr/bin/curl http://192.168.250.1/id_rsa.pub >> /home/pxadmin/.ssh/authorized_keys; \
-chown -R pxadmin:pxadmin /home/pxadmin/.ssh;" | chroot /target/bin/bash;
+chown -R pxadmin:pxadmin /home/pxadmin/.ssh;" | chroot /target /bin/bash;
  
 
