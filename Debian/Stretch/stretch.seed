@@ -260,8 +260,15 @@ short_name=\$(echo \${long_name} | cut -f 1 -d \".\"); \
 sed -i \"s/127.0.1.1\\tdebian/\${ip_addr}\\t\${short_name}\\t\${long_name}/g\" /etc/hosts & hostname \${long_name}; \
 echo \${long_name} > /etc/hostname;" | chroot /target /bin/bash;
 
+# More random late command examples from different systems - keep in mind, all late command has to be one line so don't forget \ at all
+# line ends except the last one...
+
+# Honestly, 
 #modprobe ipmi_si & modprobe ipmi_devintf & \
+
+# Fun one - sets boot mode to UEFI persistent targeting the default "disk"
 #ipmitool raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00 & \
+
 #MB_sn=$(dmidecode -t baseboard | grep "Serial Number:" | cut -f 3 -d " ") & \
 #ip_addr=$(ifconfig | awk '/192.168/{ print $2 }') & \
 #sed -i "s/127.0.1.1\tdebian/${ip_addr}\t${MB_sn}/g" /etc/hosts & hostname $MB_sn > /etc/hostname & \
