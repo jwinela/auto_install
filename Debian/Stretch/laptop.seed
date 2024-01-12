@@ -37,7 +37,8 @@ d-i mirror/http/proxy string
 ### Or for user d-i passwd/user-password-crypted password <hash from mkpasswd command>
 
 d-i passwd/root-password-crypted password <PASSWORD HASH HERE>
-#d-i passwd/root-password password 0cptester
+# Or if the password is throwaway, will be changed after install a clear text pass may be used
+#d-i passwd/root-password password secret$password 
 d-i passwd/root-password-again password-crypted password <PASSWORD HASH HERE>
 
 d-i passwd/user-fullname string <USERNAME HERE>
@@ -45,6 +46,7 @@ d-i passwd/username string <USERNAME HERE>
 d-i passwd/user-password password <USER PASSWORD HERE>
 
 d-i passwd/user-password-again password <USER PASSWORD HERE>
+# Just default groups for the user - adjust as desired
 d-i passwd/user-default-groups string audio cdrom video sudo
 
 ## Timezone Setup
@@ -54,9 +56,9 @@ d-i time/zone string US/Pacific
 d-i clock-setup/ntp boolean true
 d-i clock-setup/ntp-server string pool.ntp.org
 
-## LVM setup
+## Disk Setup
+## This is an old one - should use UEFI instead!
 
-#d-i partman-auto/method string lvm
 d-i partman-auto/method string regular
 d-i partman-lvm/device_remove_lvm boolean true
 d-i partman-lvm/device_remove_lvm_span boolean true
@@ -64,7 +66,6 @@ d-i partman-auto/purge_lvm_from_device boolean true
 d-i partman-md/device_remove_md boolean true
 d-i partman-lvm/confirm boolean true
 d-i partman-lvm/confirm_nooverwrite boolean true
-#d-i partman-auto-lvm/new_vg_name string vg0
 
 d-i partman-efi/non_efi_system boolean true
 d-i partman-basicfilesystems/choose_label string gpt
@@ -74,7 +75,6 @@ d-i partman-partitioning/default_label string gpt
 d-i partman/choose_label string gpt
 d-i partman/default_label string gpt
 d-i partman/alignment string "optimal"
-
 
 # Creates a recipe inline - note the name - small-swap
 d-i partman-auto/choose_recipe select small-swap
@@ -198,8 +198,6 @@ d-i partman/confirm_nooverwrite boolean true
 d-i grub-installer/only_debian boolean true
 d-i grub-installer/with_other_os boolean true
 
-d-i partman/alignment string "optimal"
-
 d-i partman/mount_style select uuid
 
 d-i apt-setup/non-free boolean true
@@ -237,6 +235,7 @@ d-i grub-installer/with_other_os boolean true
 # installed system (if supported by the bootloader installer).
 # Note: options passed to the installer will be added automatically.
 
+#Not used on my laptop - but here for reference
 #d-i debian-installer/add-kernel-opts string console=tty0
 
 # Avoid that last message about the install being complete.
@@ -256,9 +255,10 @@ d-i debian-installer/exit/poweroff boolean true
 
 # Generic example
 # d-i preseed/early_command string anna-install some-udeb
+
+# This gets wifi working so the install can proceed wihtout a wire - must boot to a usb key or etc. for this of course
 d-i preseed/early_command string udpkg -i /cdrom/firmware/firmware-iwlwifi_20161130-5_all.deb &&\
 cp /cdrom/firmware/iwlwifi-9000-pu-b0-jf-b0-34.ucode /lib/firmware
-
 
 # d-i partman/early_command - This command is run immediately before the partitioner starts. It may be
 # useful to apply dynamic partitioner preseeding that depends on the state
@@ -285,6 +285,7 @@ d-i partman/early_command string \
 # Note: This "kills" the "dummy" logical volume and associated /tmp/hold mount - leaving plenty of free space in the vg 
 # to allocate as desired - ex: to grow other volumes etc...
 
+# Some various examples of late commands - not used on my laptop, but useful for different servers / etc. so here for reference. 
 #d-i preseed/late_command string umount /target/tmp/hold && sed -i '/vg0-tmp+hold/d' /target/etc/fstab && lvremove --autobackup n -f /dev/mapper/vg0-tmp+hold 
 
 #in-target modprobe ipmi_si && \
