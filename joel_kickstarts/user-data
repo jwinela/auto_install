@@ -1,0 +1,90 @@
+#cloud-config
+autoinstall:
+  version: 1
+  early-commands:
+    - /bin/echo 'Acquire::HTTP::Proxy "http://{{ proxy_address }}:{{ proxy_port }}";' > /etc/apt/apt.conf.d/90curtin-aptproxy
+    - /usr/bin/sh -c 'for i in /sys/block/*; do serial="$(udevadm info -q property "${i}" | grep 'ID_SERIAL=' | cut -f 2 -d "=")" && if echo $serial | grep -q {{ disk_descriptor }}; then sed -i "/TARGET_DISK/ {n; :a; /TARGET_DISK/! {N; ba;}; s/TARGET_DISK/${serial}/; :b; n; $! bb}" /autoinstall.yaml; fi; done'
+    - /usr/bin/sh -c 'for i in /sys/class/net/*; do MAC=$(cat ${i}/address) && grep -qi $MAC /proc/cmdline && ETH_DEV=$(echo ${i} | cut -f 5 -d "/") && sed -i "s/ETH_DEV/${ETH_DEV}/g" /autoinstall.yaml; done; exit 0'
+  network:
+    network:
+      version: 2
+      ethernets:
+        ETH_DEV:
+          dhcp4: yes
+          dhcp-identifier: mac
+  proxy: http://{{ proxy_address }}:{{ proxy_port }}/
+  apt:
+    preserve_sources_list: true
+    primary:
+      - arches: [amd64]
+        uri: "{{ proxy_address }}:{{ proxy_port }}"
+  chpasswd:
+    expire: false
+    list:
+      - installer:{{ user_1_pw_hash }}
+      - builder:{{ user_2_pw_hash }}
+  ssh:
+    install-server: yes
+    allow-pw: yes
+  identity:
+    hostname: ubuntu
+    password: "{{ default_user_pw_hash }}
+    username: "{{ admin_user_name }} 
+  ssh_authorized_keys:
+    - ssh-rsa {{ user_1_ssh_key }} {{ user_1_name }}
+  storage:
+    grub:
+      reorder_uefi: false
+    config:
+      - {ptable: gpt, serial: TARGET_DISK, preserve: false, name: '',
+         type: disk, id: disk-sda, grub_device: true}      
+      - {device: disk-sda, size: 1048576, wipe: superblock-recursive, flag: bios_grub,
+         number: 0, preserve: false, type: partition, id: partition-0}
+      - {device: disk-sda, size: 1073741824, wipe: superblock-recursive, flag: linux,
+         number: 1, preserve: false, type: partition, id: partition-1}
+      - {fstype: ext4, volume: partition-1, preserve: false,
+         type: format, id: format-1}      
+      - {device: disk-sda, size: -1, flag: linux, number: 2,
+         preserve: false, grub_device: false,
+         type: partition, wipe: superblock, id: partition-2}
+      - {name: vg1, devices: [partition-2], preserve: false, 
+         type: lvm_volgroup, id: lvm-volgroup-1}
+      - {name: lvroot, volgroup: lvm-volgroup-1, size: 21474836480, preserve: false,
+         type: lvm_partition, id: lvm-partition-1}
+      - {fstype: ext4, volume: lvm-partition-1, preserve: false, wipe: pvremove,
+         type: format, id: format-2}
+      - {name: lvswap, volgroup: lvm-volgroup-1, size: 4294967296, preserve: false,
+         type: lvm_partition, wipe: pvremove, id: lvm-partition-2}
+      - {fstype: swap, volume: lvm-partition-2, preserve: false,
+         type: format, id: format-3}
+
+      - {device: format-1, path: /boot, type: mount, id: mount-1}
+      - {device: format-2, path: /, type: mount, id: mount-2}
+      - {device: format-3, path: '', type: mount, id: mount-3}
+
+  packages:
+    - net-tools
+    - bridge-utils  
+    - vlan
+    - ipmitool
+    - ethtool
+    - smartmontools
+
+  user-data:
+    disable_root: false 
+
+  late-commands:
+    - lvextend -l +100%FREE /dev/vg1/lvroot && resize2fs /dev/vg1/lvroot && mount -o remount,rw /
+    - echo '{{ admin_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/dcadmin
+    - sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /target/etc/ssh/sshd_config
+    - curtin in-target --target=/target -- passwd -q -u root
+    - sed -i 's|^root:.:|root:{{ root_password_hash }}:|' /target/etc/shadow
+    - poweroff
+
+chpasswd:
+  expire: false
+  list:
+    - {{ user_1_name }}:{{ user_1_password_hash }}
+ssh_authorized_keys:
+  - ssh-rsa {{ user_1_ssh_key }} {{ user_1_name }}
+
